@@ -6,11 +6,14 @@
 
 ---
 
-> **The one-line verdict**: On a 24 GB laptop GPU we got **12 of the newest open-weight generative
-> model lines running across 21 measured configurations** (image / image editing / video / video+audio
-> / music / image-to-3D) — and proved with a **controlled experiment** that
-> **NVFP4 is the best quantization format for this machine**: **22% faster** and **27% smaller** than
+> **The one-line verdict**: On a 24 GB laptop GPU we got **13 of the newest open-weight generative
+> model lines running across 28 measured configurations** (image / image editing / video / video+audio
+> / character motion transfer / music / image-to-3D) — and proved with a **controlled experiment** that
+> **NVFP4 is the best quantization format for this machine**: **2.6× faster** and **27% smaller** than
 > INT8, with a quality difference that sits **below the random seed noise floor**.
+> **2026-10-11 re-test**: with the cu130 optimized kernels unlocked, NVFP4 runs **3.45× faster** than the
+> old eager-fallback baseline (Z-Image-Turbo 1024²: 13.8 s → **4.0 s**); the old "22% faster" was a
+> lower bound measured while *both* formats ran in eager mode.
 
 This is not a "copy-paste the commands" tutorial. The hard part is never getting one model to run —
 it is **deciding which of dozens of quantization variants to pick**. This document lays the whole
@@ -138,7 +141,7 @@ Top row: English prompt. Bottom row: Chinese prompt. **The output is the same** 
 | GPU | **RTX 5090 Laptop** — 24435 MiB (**24 GB**), compute capability **sm_120** (Blackwell) |
 | CUDA | 12.8 |
 | System RAM | 64 GB |
-| Engine | ComfyUI **0.38.0** (upgraded 2026-10-05) / PyTorch 2.11.0+cu128 / Python 3.11.9 |
+| Engine | ComfyUI **0.39.0** (upgraded 2026-10-11) / PyTorch **2.14.1+cu130** (optimized CUDA kernels active) / NVIDIA driver 617.42 / Python 3.11.9 |
 | Goal | Use the **newest** open-weight models, covering **image / video / audio** generation |
 
 **Why start at 24 GB?** Because it is the only genuinely hard constraint in this document.
@@ -168,12 +171,13 @@ encoder at 15.7 GB — **each individually exceeds 24 GB**. Which means:
 
 | Use case | Model chosen | Quantization | Measured time | Why this one |
 |---|---|---|---|---|
-| **Image (daily driver)** | Z-Image-Turbo | **NVFP4** 4.51 GB | **13.8 s** (1024²/8 steps) | Full set is **8.33 GB — stays resident**, zero offload |
+| **Image (daily driver)** | Z-Image-Turbo | **NVFP4** 4.51 GB | **4.0 s** (1024²/8 steps, cu130 re-test) | Full set is **8.33 GB — stays resident**, zero offload; 13.8 s under the old eager fallback |
 | **Image (high-res / Chinese)** | Qwen-Image 2512 + Lightning | fp8 20.43 GB | **12.2 s** (1328²/**4 steps**) | 68% more pixels and **Chinese text 30/30 exact**; cost: offload mandatory |
 | Image editing | FLUX.2 Klein **4B** | fp8 4.07 GB | 42.3 s | BFL's official fp8 file is only 4.07 GB, quality intact |
 | **Video (fastest)** | LTX-Video 2B distilled | fp8 4.46 GB | **19.2 s** (1216×704/121 frames) | Fastest video model we measured; motion is subtle |
 | **Video (best quality, light tier)** | Wan 2.2 5B TI2V | fp16 10 GB | 355.1 s (1280×704/121 frames) | Best prompt adherence and physical plausibility |
 | **Video (flagship tier)** | Wan 2.2 14B MoE | fp8 dual-expert 28.6 GB | **93.8 s** (832×480/81 frames/**4 steps**) | Flagship MoE + LightX2V 4-step LoRA actually runs |
+| **Character motion transfer** | Wan 2.2 **Animate-2** 14B | int8+ConvRot 18.41 GB | **Move 105 s / Mix 155 s** (Move: 832×480/77 frames·4 steps; Mix: 640×640/77 frames·6 steps) | New 2026-10-11: drive a reference character from a motion video (Move) or swap it into a scene (Mix, per-frame SAM2 segmentation); Apache 2.0 |
 | Video (cinematic + 1080p SR) | HunyuanVideo 1.5 720p→1080p | fp16 + SR models | ⚠️ **70 min without finishing — infeasible on 24 GB** | See §6.4, "a negative result" |
 | **Video + audio** | MiniMax H3 | int8 + ConvRot | 519.1 s (1344×768/124 frames) | The **only line with a native audio track** |
 | **Music generation** | ACE-Step 1.5 XL turbo | bf16 9.97 GB | **20.8 s** (60 s song, re-verified on 0.38.0) | **Apache 2.0, commercially usable**, fastest output |
@@ -1045,6 +1049,11 @@ with a material, ready for Blender or a game engine.
 **Run-to-run variance in absolute terms is about ±15%** (a laptop GPU throttles against thermal and
 power limits), but **the relative result — nvfp4 is 22–25% faster than int8 — held in both runs.**
 
+> **2026-10-11 update**: after the cu130 kernel unlock, a same-parameter re-test gave
+> nvfp4 **4.0 s** vs int8 **10.5 s** — **NVFP4's advantage over INT8 widened to 2.6×**. INT8 rides the
+> convrot dequant path (barely faster than eager), while NVFP4 alone taps Blackwell's native fp4
+> acceleration units (`scaled_mm_nvfp4`); only after the kernel unlock does the gap truly open. See §6.7.
+
 > **When reporting performance, relative percentages are far more trustworthy than absolute values.**
 
 ---
@@ -1064,10 +1073,43 @@ numbers in this document:
 | New `w6a8` quantization format and a `ModelAttentionBackend` node | One more VRAM-saving option for a 24 GB machine — worth trying |
 | New `TextEncodeQwenImage21` | **Qwen-Image 2.1 is now usable** (Comfy-Org ships a single-file int8 build, 17.3 GB, fits) |
 
-> **⚠️ But one thing did not change**: the `comfy_kitchen` CUDA backend **is still disabled**
-> (`WARNING: You need pytorch with cu130 or higher`; this machine runs cu128).
-> So **§5's "NVFP4 is 22% faster" remains a lower bound** — upgrading ComfyUI cannot fix this,
-> because it depends on the PyTorch CUDA version.
+> **✅ Resolved on 2026-10-11**: after upgrading to PyTorch 2.14.1+cu130 the CUDA backend is active
+> (`backend cuda: available=True, disabled=False`); for the NVFP4 re-test see the next section.
+
+### 6.7 Environment upgrade and NVFP4 re-test (2026-10-11) — the lower-bound prophecy fulfilled
+
+**Upgrade path**: ComfyUI 0.38.0 → **0.39.0** (codeload tarball overlay, excluding models/custom_nodes/
+user/input/output), PyTorch 2.11.0+cu128 → **2.14.1+cu130**, NVIDIA driver 616.56 → **617.42**,
+pip 24.0 → 26.2.1. Post-upgrade startup log confirms
+`comfy_kitchen backend cuda: {'available': True, 'disabled': False}` —
+**the long-blocked cu130 optimized kernels (NVFP4 / INT8-ConvRot / FP8) are now live**.
+
+**NVFP4 re-test (Z-Image-Turbo, 1024² / 8 steps, same parameters, server-side authoritative timing)**:
+
+| Configuration | Time | Notes |
+|---|---|---|
+| Round 3/4 baseline (cu128, eager fallback) | 13.8 s (two runs 17.7 / 13.8) | §5-era figure |
+| cu130 first run (incl. cold 8.33 GB weight load) | 16.9 s | reference only |
+| **cu130 warm run (two seeds)** | **4.0 s / 4.0 s** | **3.45× vs baseline** |
+| int8 comparison (cu130) | 10.5 s | only 1.3× vs baseline |
+
+**Three conclusions**:
+1. **§5's "NVFP4 is 22% faster is a lower bound" prophecy fulfilled** — the real gap is **3.45×**.
+   The old figure compared nvfp4 vs bf16 **both running in eager fallback**. After the unlock,
+   NVFP4 alone taps Blackwell's native fp4 acceleration units (`scaled_mm_nvfp4`) while INT8 rides
+   the convrot dequant path — that is where the gap truly opens.
+2. **The quantization verdict is unchanged and stronger**: on Blackwell, 4-bit always means NVFP4
+   (2.6× vs INT8).
+3. **Re-tests must change the seed**: same seed + same workflow hits ComfyUI's full-node cache and
+   returns a fake 0.0 s timing.
+
+**New coverage item 28**: Wan 2.2 **Animate-2** 14B (released 2026-07, Apache 2.0) — drive a
+reference character from a motion video (**Move**, 832×480/77 frames/4 steps, **105 s**) or swap it
+into a scene (**Mix**, per-frame SAM2 segmentation + background preservation, 640×640/77 frames/
+6 steps, **155 s**). Weights: **int8_convrot** single file 18.41 GB (a cu130-native accelerated
+format); text encoder/VAE/4-step LoRA fully reused from Round 1-4 assets. 0.39 ships two parallel
+nodes: `WanAnimate2ToVideo` (Move) and `WanAnimateToVideo` (Mix, with background_video/character_mask).
+`face_video` (expression transfer) not wired this round. See `data/coverage-round5.md`.
 
 **Same-day model cleanup**: 42 files / 167.4 GB removed (515.6 GB → 348.2 GB), in three groups:
 
@@ -1092,7 +1134,7 @@ numbers in this document:
 
 | Priority | Optimization | Payoff | Cost |
 |---|---|---|---|
-| **P0** | Use **NVFP4** for every 4-bit model | 22% faster, 27% smaller, no measurable quality change | none |
+| **P0** | Use **NVFP4** for every 4-bit model | 2.6× faster than INT8, 27% smaller, no measurable quality change (cu130 re-test; 3.45× vs the old eager-fallback baseline) | none |
 | **P0** | Use a **distilled LoRA to cut steps** (8 → 4) | up to 2× faster | tune the LoRA strength |
 | **P1** | **Tiled VAE decode** (`VAEDecodeTiled`) | avoids transient OOM at high resolution | slightly slower |
 | **P1** | **Free VRAM before each run** (`POST /free`) | avoids leftovers breaking sequential runs | none |
@@ -1331,8 +1373,9 @@ The chain of reasons, each backed by a measurement:
 
 **If the GPU is Blackwell (sm_120/121), always pick NVFP4.**
 Across five same-model dual-format comparisons on this machine, NVFP4 was always faster and
-smaller, with the quality delta below the noise floor. And §5's "22% faster" was measured with the
-optimized kernels disabled — a **lower bound** (see Appendix E ④).
+smaller, with the quality delta below the noise floor. §5's "22% faster" was a **lower bound**
+measured with the optimized kernels disabled — fulfilled on 2026-10-11: **3.45× vs the old baseline,
+2.6× vs INT8** (see §6.7).
 
 ---
 
@@ -1698,6 +1741,8 @@ Until then, the **benefits of the single repo — reusable, comparable, explaine
   kernels disabled.** In other words, **"22% faster" is a conservative figure (a lower bound)** —
   after moving to cu130 the gap should grow. This is **a known, unverified optimistic bias** in this
   document, stated here explicitly.
+  **→ Verified and fulfilled on 2026-10-11**: with cu130 unlocked, NVFP4 runs **3.45× faster** than
+  the old baseline (13.8 s → 4.0 s), see §6.7. Positive feedback for the lower-bound methodology.
 
 #### ⑤ Wan 2.2 14B MoE — ✅ **run this round**
 
@@ -1762,7 +1807,9 @@ Until then, the **benefits of the single repo — reusable, comparable, explaine
    The LTX-2.3 lesson: rejecting a model **that has GGUF Q3/Q4 builds** because its fp8 build is
    29 GB is wrong. The correct phrasing is "fp8 does not fit; GGUF Q4_K_M (16 GB) should work, unverified".
 2. **Every performance claim must state the conditions under which it holds.**
-   The §5 NVFP4 result was measured with the cu130 kernels disabled, so "22% faster" is a **lower bound**.
+   The §5 NVFP4 result was measured with the cu130 kernels disabled, so "22% faster" is a **lower bound**
+   (re-measured at 3.45× after the kernel unlock on 2026-10-11, see §6.7 — that annotation saved
+   this document's accuracy).
    Without stating the conditions, readers will mistake it for the hardware's ceiling.
 
 ---
