@@ -24,7 +24,7 @@ from urllib.parse import unquote
 from markdown_it import MarkdownIt
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO = "lifeidle/comfyui-5090-laptop-minimax-h3-wan2.2-nvfp4"
+REPO = "lifeidle/comfyui-5090-laptop-24gb-minimax-h3-qwen-image-wan2.2"
 SITE = f"https://{REPO.split('/')[0]}.github.io/{REPO.split('/')[1]}/"
 
 
