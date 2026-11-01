@@ -6,14 +6,17 @@
 
 ---
 
-> **The one-line verdict**: On a 24 GB laptop GPU we got **13 of the newest open-weight generative
-> model lines running across 28 measured configurations** (image / image editing / video / video+audio
+> **The one-line verdict**: On a 24 GB laptop GPU we got **15 of the newest open-weight generative
+> model lines running across 30 measured configurations** (image / image editing / video / video+audio
 > / character motion transfer / music / image-to-3D) — and proved with a **controlled experiment** that
 > **NVFP4 is the best quantization format for this machine**: **2.6× faster** and **27% smaller** than
 > INT8, with a quality difference that sits **below the random seed noise floor**.
 > **2026-10-11 re-test**: with the cu130 optimized kernels unlocked, NVFP4 runs **3.45× faster** than the
 > old eager-fallback baseline (Z-Image-Turbo 1024²: 13.8 s → **4.0 s**); the old "22% faster" was a
 > lower bound measured while *both* formats ran in eager mode.
+> **2026-11-01 re-test**: engine bumped to **0.43.0**; two new image lines — **MOSS-Image**
+> (Chinese poster material + BBox layout control, 4/4 text boxes exact) and **FLUX.3 Klein distilled**
+> (15 steps, 6.8 s); H3 gains LightVAE plus two more improvements (no VRAM-peak change on 24 GB, see Round 6).
 
 This is not a "copy-paste the commands" tutorial. The hard part is never getting one model to run —
 it is **deciding which of dozens of quantization variants to pick**. This document lays the whole
@@ -141,7 +144,7 @@ Top row: English prompt. Bottom row: Chinese prompt. **The output is the same** 
 | GPU | **RTX 5090 Laptop** — 24435 MiB (**24 GB**), compute capability **sm_120** (Blackwell) |
 | CUDA | 12.8 |
 | System RAM | 64 GB |
-| Engine | ComfyUI **0.39.0** (upgraded 2026-10-11) / PyTorch **2.14.1+cu130** (optimized CUDA kernels active) / NVIDIA driver 617.42 / Python 3.11.9 |
+| Engine | ComfyUI **0.43.0** (upgraded 2026-11-01) / PyTorch **2.14.1+cu130** (optimized CUDA kernels active) / NVIDIA driver 617.42 / Python 3.11.9 |
 | Goal | Use the **newest** open-weight models, covering **image / video / audio** generation |
 
 **Why start at 24 GB?** Because it is the only genuinely hard constraint in this document.
@@ -172,6 +175,8 @@ encoder at 15.7 GB — **each individually exceeds 24 GB**. Which means:
 | Use case | Model chosen | Quantization | Measured time | Why this one |
 |---|---|---|---|---|
 | **Image (daily driver)** | Z-Image-Turbo | **NVFP4** 4.51 GB | **4.0 s** (1024²/8 steps, cu130 re-test) | Full set is **8.33 GB — stays resident**, zero offload; 13.8 s under the old eager fallback |
+| **Image (Chinese material / layout control)** | **MOSS-Image** SFT | int8+ConvRot 15.5 GB full set | **26.4 s** (1024²/50 steps) + layout poster 29.9 s | New 2026-11-01: **BBox layout control**, 4/4 specified text boxes exact; Apache 2.0. For speed prefer Qwen-Image 2512 Lightning |
+| **Image (speed alternative)** | FLUX.3 Klein distilled | int8+ConvRot 10.7 GB full set | **6.8 s** (1024²/15 steps, first run) | New 2026-11-01: BFL's open small cup; Chinese text 3/4 ("乡" wrong), behind MOSS; Apache 2.0 |
 | **Image (high-res / Chinese)** | Qwen-Image 2512 + Lightning | fp8 20.43 GB | **12.2 s** (1328²/**4 steps**) | 68% more pixels and **Chinese text 30/30 exact**; cost: offload mandatory |
 | Image editing | FLUX.2 Klein **4B** | fp8 4.07 GB | 42.3 s | BFL's official fp8 file is only 4.07 GB, quality intact |
 | **Video (fastest)** | LTX-Video 2B distilled | fp8 4.46 GB | **19.2 s** (1216×704/121 frames) | Fastest video model we measured; motion is subtle |
