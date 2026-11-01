@@ -146,12 +146,14 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:22px 0 0;color:v
   </div>
   <article class="doc i-zh"><hr />
 <blockquote>
-<p><strong>一句话结论</strong>：在 24 GB 显存的笔记本 GPU 上，我们跑通了 <strong>13 条最新开源生成模型线、28 组实测配置</strong>
+<p><strong>一句话结论</strong>：在 24 GB 显存的笔记本 GPU 上，我们跑通了 <strong>15 条最新开源生成模型线、30 组实测配置</strong>
 （图像 / 图像编辑 / 视频 / 视频+音频 / 角色·动作迁移 / 音乐 / 图生 3D），
 并用<strong>受控实验</strong>证明 <strong>NVFP4 是这台机器上的最佳量化格式</strong> —— 比 INT8 快 <strong>2.6 倍</strong>、小 <strong>27%</strong>，
 而画质差异<strong>落在随机噪声地板之下</strong>。
 <strong>2026-10-11 复测</strong>：PyTorch cu130 优化内核解锁后，NVFP4 对旧版 eager 回退快 <strong>3.45×</strong>
-（Z-Image-Turbo 1024²：13.8 s → <strong>4.0 s</strong>），旧版「快 22%」的结论是两者都在 eager 模式下测得的下界。</p>
+（Z-Image-Turbo 1024²：13.8 s → <strong>4.0 s</strong>），旧版「快 22%」的结论是两者都在 eager 模式下测得的下界。
+<strong>2026-11-01 复测</strong>：引擎升至 <strong>0.43.0</strong>，新增 <strong>MOSS-Image</strong>（中文物料 + BBox 布局控制，4 块文字 100% 正确）
+与 <strong>FLUX.3 Klein distilled</strong>（15 步 6.8 s）两条图像线；H3 获 LightVAE 等三项改善（24 GB 卡显存峰值无变化，见 Round 6）。</p>
 </blockquote>
 <p>这不是一份&quot;把命令贴一遍&quot;的教程。真正难的不是跑通某个模型，而是<strong>在几十个量化版本里判断该选哪一个</strong>。
 本文把我们的完整决策链摊开：怎么想、怎么下、怎么搭、怎么测、怎么选。所有数字都是本机实测，
@@ -368,7 +370,7 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:22px 0 0;color:v
 </tr>
 <tr>
 <td>引擎</td>
-<td>ComfyUI <strong>0.39.0</strong>（2026-10-11 升级）/ PyTorch <strong>2.14.1+cu130</strong>（优化 CUDA 内核已激活）/ NVIDIA 驱动 617.42 / Python 3.11.9</td>
+<td>ComfyUI <strong>0.43.0</strong>（2026-11-01 升级）/ PyTorch <strong>2.14.1+cu130</strong>（优化 CUDA 内核已激活）/ NVIDIA 驱动 617.42 / Python 3.11.9</td>
 </tr>
 <tr>
 <td>目标</td>
@@ -408,6 +410,20 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:22px 0 0;color:v
 <td><strong>NVFP4</strong> 4.51 GB</td>
 <td><strong>4.0 s</strong>（1024²/8步，cu130 复测）</td>
 <td>全套 <strong>8.33 GB 可常驻</strong>，零 offload；旧版 eager 回退时 13.8 s</td>
+</tr>
+<tr>
+<td><strong>图像（中文物料 / 布局控制）</strong></td>
+<td><strong>MOSS-Image</strong> SFT</td>
+<td>int8+ConvRot 15.5 GB 全套</td>
+<td><strong>26.4 s</strong>（1024²/50步） + 布局海报 29.9 s</td>
+<td>2026-11-01 新增：<strong>BBox 布局控制</strong>，4 块指定文字 100% 正确；Apache 2.0。要快选 Qwen-Image 2512 Lightning</td>
+</tr>
+<tr>
+<td><strong>图像（速度备选）</strong></td>
+<td>FLUX.3 Klein distilled</td>
+<td>int8+ConvRot 10.7 GB 全套</td>
+<td><strong>6.8 s</strong>（1024²/15步，首跑）</td>
+<td>2026-11-01 新增：BFL 开源小杯；中文渲染 3/4（&quot;乡&quot;错），不如 MOSS；Apache 2.0</td>
 </tr>
 <tr>
 <td><strong>图像（高分辨率 / 中文）</strong></td>
@@ -3370,14 +3386,17 @@ LTX-2.3 的教训：用 fp8 的 29 GB 去否决一个<strong>有 GGUF Q3/Q4 版�
 </article>
   <article class="doc i-en"><hr />
 <blockquote>
-<p><strong>The one-line verdict</strong>: On a 24 GB laptop GPU we got <strong>13 of the newest open-weight generative
-model lines running across 28 measured configurations</strong> (image / image editing / video / video+audio
+<p><strong>The one-line verdict</strong>: On a 24 GB laptop GPU we got <strong>15 of the newest open-weight generative
+model lines running across 30 measured configurations</strong> (image / image editing / video / video+audio
 / character motion transfer / music / image-to-3D) — and proved with a <strong>controlled experiment</strong> that
 <strong>NVFP4 is the best quantization format for this machine</strong>: <strong>2.6× faster</strong> and <strong>27% smaller</strong> than
 INT8, with a quality difference that sits <strong>below the random seed noise floor</strong>.
 <strong>2026-10-11 re-test</strong>: with the cu130 optimized kernels unlocked, NVFP4 runs <strong>3.45× faster</strong> than the
 old eager-fallback baseline (Z-Image-Turbo 1024²: 13.8 s → <strong>4.0 s</strong>); the old &quot;22% faster&quot; was a
-lower bound measured while <em>both</em> formats ran in eager mode.</p>
+lower bound measured while <em>both</em> formats ran in eager mode.
+<strong>2026-11-01 re-test</strong>: engine bumped to <strong>0.43.0</strong>; two new image lines — <strong>MOSS-Image</strong>
+(Chinese poster material + BBox layout control, 4/4 text boxes exact) and <strong>FLUX.3 Klein distilled</strong>
+(15 steps, 6.8 s); H3 gains LightVAE plus two more improvements (no VRAM-peak change on 24 GB, see Round 6).</p>
 </blockquote>
 <p>This is not a &quot;copy-paste the commands&quot; tutorial. The hard part is never getting one model to run —
 it is <strong>deciding which of dozens of quantization variants to pick</strong>. This document lays the whole
@@ -3599,7 +3618,7 @@ Mediterranean coastline).</p>
 </tr>
 <tr>
 <td>Engine</td>
-<td>ComfyUI <strong>0.39.0</strong> (upgraded 2026-10-11) / PyTorch <strong>2.14.1+cu130</strong> (optimized CUDA kernels active) / NVIDIA driver 617.42 / Python 3.11.9</td>
+<td>ComfyUI <strong>0.43.0</strong> (upgraded 2026-11-01) / PyTorch <strong>2.14.1+cu130</strong> (optimized CUDA kernels active) / NVIDIA driver 617.42 / Python 3.11.9</td>
 </tr>
 <tr>
 <td>Goal</td>
@@ -3642,6 +3661,20 @@ optimization. It is the difference between running and not running.</p>
 <td><strong>NVFP4</strong> 4.51 GB</td>
 <td><strong>4.0 s</strong> (1024²/8 steps, cu130 re-test)</td>
 <td>Full set is <strong>8.33 GB — stays resident</strong>, zero offload; 13.8 s under the old eager fallback</td>
+</tr>
+<tr>
+<td><strong>Image (Chinese material / layout control)</strong></td>
+<td><strong>MOSS-Image</strong> SFT</td>
+<td>int8+ConvRot 15.5 GB full set</td>
+<td><strong>26.4 s</strong> (1024²/50 steps) + layout poster 29.9 s</td>
+<td>New 2026-11-01: <strong>BBox layout control</strong>, 4/4 specified text boxes exact; Apache 2.0. For speed prefer Qwen-Image 2512 Lightning</td>
+</tr>
+<tr>
+<td><strong>Image (speed alternative)</strong></td>
+<td>FLUX.3 Klein distilled</td>
+<td>int8+ConvRot 10.7 GB full set</td>
+<td><strong>6.8 s</strong> (1024²/15 steps, first run)</td>
+<td>New 2026-11-01: BFL's open small cup; Chinese text 3/4 (&quot;乡&quot; wrong), behind MOSS; Apache 2.0</td>
 </tr>
 <tr>
 <td><strong>Image (high-res / Chinese)</strong></td>
