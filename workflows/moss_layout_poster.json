@@ -1,0 +1,111 @@
+{
+ "1": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "moss_image_sft_int8_convrot.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "2": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "qwen3.5_9b_int8_convrot.safetensors",
+   "type": "moss_image",
+   "device": "default"
+  }
+ },
+ "3": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "flux2-vae.safetensors"
+  }
+ },
+ "4": {
+  "class_type": "ModelSamplingAuraFlow",
+  "inputs": {
+   "model": [
+    "1",
+    0
+   ],
+   "shift": 5.0
+  }
+ },
+ "9": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "2",
+    0
+   ],
+   "text": "{\"summary\":{\"caption\":\"一张现代简约风格的咖啡馆菜单海报，暖木色调，顶部品牌横幅大字，中部菜单信息清晰醒目，底部营业时间小字，中央一杯拿铁咖啡特写，扁平插画与摄影结合风格，版式干净专业\"},\"items\":[{\"label\":\"text\",\"caption\":\"brand banner\",\"text\":\"龙行咖啡\",\"bbox\":[-462,-312,-332,288]},{\"label\":\"text\",\"caption\":\"menu info\",\"text\":\"本周特调 第二杯半价\",\"bbox\":[-162,-262,88,238]},{\"label\":\"text\",\"caption\":\"opening hours\",\"text\":\"每日 8:00 - 22:00\",\"bbox\":[368,-212,438,188]},{\"label\":\"object\",\"caption\":\"a ceramic cup of latte art coffee with heart-shaped foam art on a wooden table\",\"bbox\":[88,-162,368,138]}],\"bbox_coord_space\":\"abs_centralized\",\"bbox_format\":\"yxyx\"}"
+  }
+ },
+ "10": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "2",
+    0
+   ],
+   "text": " blurry, low quality, wrong characters, garbled text, deformed cup, messy layout, watermark"
+  }
+ },
+ "11": {
+  "class_type": "EmptySD3LatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  }
+ },
+ "12": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "4",
+    0
+   ],
+   "positive": [
+    "9",
+    0
+   ],
+   "negative": [
+    "10",
+    0
+   ],
+   "latent_image": [
+    "11",
+    0
+   ],
+   "seed": 42,
+   "steps": 50,
+   "cfg": 3.0,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 1.0
+  }
+ },
+ "13": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "12",
+    0
+   ],
+   "vae": [
+    "3",
+    0
+   ]
+  }
+ },
+ "14": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "13",
+    0
+   ],
+   "filename_prefix": "moss/layout_poster"
+  }
+ }
+}
