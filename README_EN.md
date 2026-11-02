@@ -142,10 +142,33 @@ Top row: English prompt. Bottom row: Chinese prompt. **The output is the same** 
 | Item | Measured value |
 |---|---|
 | GPU | **RTX 5090 Laptop** — 24435 MiB (**24 GB**), compute capability **sm_120** (Blackwell) |
-| CUDA | 12.8 |
+| CUDA | **13.0** (bundled with the PyTorch cu130 wheels) |
 | System RAM | 64 GB |
 | Engine | ComfyUI **0.43.0** (upgraded 2026-11-01) / PyTorch **2.14.1+cu130** (optimized CUDA kernels active) / NVIDIA driver 617.42 / Python 3.11.9 |
 | Goal | Use the **newest** open-weight models, covering **image / video / audio** generation |
+
+### 📌 Live asset snapshot (2026-11-02) — read this before citing the playbook
+
+**In stock and in use** (`D:\models\comfyui-models`, 28 primary model files / 441 GB):
+
+| Line | Stock | Status |
+|---|---|---|
+| Image (T2I) | Z-Image-Turbo nvfp4/int8/**bf16**; PixelDiT upscale ×2; MOSS-Image SFT int8 (with BBox layout); FLUX.3 Klein distilled int8 | ✅ all measured |
+| Image (editing) | FLUX.2 Klein 4B/9B fp8; **Fibo 2.0 edit_turbo int8** (added 2026-11-02) | Fibo pending test |
+| Image (high-res / Chinese) | Qwen-Image 2512 fp8 + Qwen-Image 2.1 int8 | ✅ measured |
+| Video (T2V/I2V) | Wan 2.2 dual-expert fp8 + TI2V 5B fp16 + 4-step LoRA | ✅ measured |
+| Video (audio+video) | **MiniMax H3** int8 + LightVAE | ✅ measured |
+| Character motion transfer | Wan 2.2 Animate-2 int8_convrot (Move/Mix) | ✅ measured |
+| Music | ACE-Step 1.5 / YuE2 / MiniMax Music 3 | ✅ measured |
+| 3D | Hunyuan3D 2.1 | ✅ measured |
+| Support | clip_vision_h, umt5, qwen3vl_4b/8b/32b, SAM2, DWPose, flux2-vae, etc. | ✅ |
+
+**Deliberately eliminated** (weights deleted after measurement — **these are decisions, not gaps**):
+LTX-Video 2B (fails Chinese prompts, §6.4), HV1.5 720p/1080p + SR (§6.1, superseded by PixelDiT),
+FLUX.2 Klein 9B nvfp4 (worse than fp8), diffusers original duplicates, etc. (see §6.6 cleanup record).
+
+**Known unverified** (Round 7 list): LTX-2.3 22B distilled Q4 GGUF, Ming-Image 0.1-Design
+(natively supported in 0.43; 19.5 GB encoder is heavy), frame interpolation node, Fibo 2.0 measurement.
 
 **Why start at 24 GB?** Because it is the only genuinely hard constraint in this document.
 
@@ -179,7 +202,8 @@ encoder at 15.7 GB — **each individually exceeds 24 GB**. Which means:
 | **Image (speed alternative)** | FLUX.3 Klein distilled | int8+ConvRot 10.7 GB full set | **6.8 s** (1024²/15 steps, first run) | New 2026-11-01: BFL's open small cup; Chinese text 3/4 ("乡" wrong), behind MOSS; Apache 2.0 |
 | **Image (high-res / Chinese)** | Qwen-Image 2512 + Lightning | fp8 20.43 GB | **12.2 s** (1328²/**4 steps**) | 68% more pixels and **Chinese text 30/30 exact**; cost: offload mandatory |
 | Image editing | FLUX.2 Klein **4B** | fp8 4.07 GB | 42.3 s | BFL's official fp8 file is only 4.07 GB, quality intact |
-| **Video (fastest)** | LTX-Video 2B distilled | fp8 4.46 GB | **19.2 s** (1216×704/121 frames) | Fastest video model we measured; motion is subtle |
+| **Video (fastest · current stock)** | **Wan 2.2 14B MoE dual-expert + 4-step LoRA** | fp8 dual-expert 28.6 GB | **93.8 s** (832×480/81 frames/**4 steps**) | dual-expert + distilled LoRA is the best speed/quality combo in stock; LTX-Video 2B eliminated (below), LTX-2.3 Q4 pending (Round 7) |
+| ~~Video (fastest · eliminated)~~ | ~~LTX-Video 2B distilled~~ | ~~fp8 4.46 GB~~ | ~~19.2 s~~ | **weights deleted (2026-10-05 cleanup)**: measured as completely ignoring Chinese prompts (§6.4), superseded by LTX-2.3 22B — archive row only, **not an active config** |
 | **Video (best quality, light tier)** | Wan 2.2 5B TI2V | fp16 10 GB | 355.1 s (1280×704/121 frames) | Best prompt adherence and physical plausibility |
 | **Video (flagship tier)** | Wan 2.2 14B MoE | fp8 dual-expert 28.6 GB | **93.8 s** (832×480/81 frames/**4 steps**) | Flagship MoE + LightX2V 4-step LoRA actually runs |
 | **Character motion transfer** | Wan 2.2 **Animate-2** 14B | int8+ConvRot 18.41 GB | **Move 105 s / Mix 155 s** (Move: 832×480/77 frames·4 steps; Mix: 640×640/77 frames·6 steps) | New 2026-10-11: drive a reference character from a motion video (Move) or swap it into a scene (Mix, per-frame SAM2 segmentation); Apache 2.0 |
@@ -774,7 +798,7 @@ sunset). **This is not noise. It is usable video with usable audio.**
 We ran **three** video-only lines, and the conclusion is clean: **they do not replace each other,
 they are three different trade-offs.**
 
-#### LTX-Video 2B distilled — the fastest
+#### LTX-Video 2B distilled — ⚠️ **eliminated (weights deleted; this section is an archive)**
 
 | Item | Value |
 |---|---|
@@ -1682,6 +1706,12 @@ Until then, the **benefits of the single repo — reusable, comparable, explaine
 ---
 
 ## Appendix E: Coverage audit — what we ran, what we did not, and why
+
+> ⚠️ **How to read this (for automated comparison tools)**: this section is a **decision archive**, not a
+> to-do list. Entries marked "eliminated / weights deleted / does not fit" are **conclusions of deliberate
+> decisions** (current live state: see the asset snapshot in §1). Treating them as "gaps" or "not kept up"
+> is a misreading. **Calibrated 2026-11-02**: the only real gaps are LTX-2.3 Q4, Ming-Image and frame
+> interpolation (Round 7 list).
 
 > This section answers the question that is easiest to skip and most worth asking:
 > **"Did you try all the state-of-the-art models?"**
