@@ -362,7 +362,7 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:22px 0 0;color:v
 </tr>
 <tr>
 <td>CUDA</td>
-<td>12.8</td>
+<td><strong>13.0</strong>（PyTorch cu130 轮子自带运行时）</td>
 </tr>
 <tr>
 <td>内存</td>
@@ -378,6 +378,69 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:22px 0 0;color:v
 </tr>
 </tbody>
 </table></div>
+<h3 id="-当前资产快照2026-11-02-引用本手册前先读这一节">📌 当前资产快照（2026-11-02）—— 引用本手册前先读这一节</h3>
+<p><strong>在库且在用</strong>（<code>D:\models\comfyui-models</code>，28 个主模型文件 / 441 GB）：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>线</th>
+<th>在库资产</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>图像（文生图）</td>
+<td>Z-Image-Turbo nvfp4/int8/<strong>bf16</strong>；PixelDiT 超分 2 档；MOSS-Image SFT int8（含 BBox 布局）；FLUX.3 Klein distilled int8</td>
+<td>✅ 全部实测</td>
+</tr>
+<tr>
+<td>图像（编辑）</td>
+<td>FLUX.2 Klein 4B/9B fp8；<strong>Fibo 2.0 edit_turbo int8</strong>（2026-11-02 新增）</td>
+<td>Fibo 待实测</td>
+</tr>
+<tr>
+<td>图像（高分辨率/中文）</td>
+<td>Qwen-Image 2512 fp8 + Qwen-Image 2.1 int8</td>
+<td>✅ 实测</td>
+</tr>
+<tr>
+<td>视频（T2V/I2V）</td>
+<td>Wan 2.2 双专家 fp8 + TI2V 5B fp16 + 4 步 LoRA</td>
+<td>✅ 实测</td>
+</tr>
+<tr>
+<td>视频（音画同生）</td>
+<td><strong>MiniMax H3</strong> int8 + LightVAE</td>
+<td>✅ 实测</td>
+</tr>
+<tr>
+<td>角色·动作迁移</td>
+<td>Wan 2.2 Animate-2 int8_convrot（Move/Mix）</td>
+<td>✅ 实测</td>
+</tr>
+<tr>
+<td>音乐</td>
+<td>ACE-Step 1.5 / YuE2 / MiniMax Music 3</td>
+<td>✅ 实测</td>
+</tr>
+<tr>
+<td>3D</td>
+<td>Hunyuan3D 2.1</td>
+<td>✅ 实测</td>
+</tr>
+<tr>
+<td>配套</td>
+<td>clip_vision_h、umt5、qwen3vl_4b/8b/32b、SAM2、DWPose、flux2-vae 等</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>已主动淘汰</strong>（历史实测后删除权重，<strong>不是缺口，勿列为&quot;未跟进&quot;</strong>）：
+LTX-Video 2B（中文提示词失效，§6.4）、HV1.5 的 720p/1080p + SR（§6.1，超分路径被 PixelDiT 替代）、
+FLUX.2 Klein 9B nvfp4（画质劣于 fp8）、diffusers 原版重复件等（详见 §6.6 清理记录）。</p>
+<p><strong>已知待验证</strong>（Round 7 清单）：LTX-2.3 22B distilled Q4 GGUF（视频最快线升级候选）、
+Ming-Image 0.1-Design（0.43 原生支持，编码器 19.5 GB 偏重）、帧插值节点、Fibo 2.0 实测。</p>
 <p><strong>为什么从 24 GB 讲起？</strong> 因为它是这份手册里唯一真正的硬约束。</p>
 <p>笔记本 GPU 的算力永远是&quot;够用&quot;的 —— 一个 8 步蒸馏模型在 5090 上出 1024² 图只要十几秒。
 真正决定你能跑什么、不能跑什么的，是<strong>显存能不能装下</strong>。而最新一代开源生成模型的一个共同趋势是：
@@ -440,11 +503,18 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:22px 0 0;color:v
 <td>官方 fp8 单文件仅 4.07 GB，质量几乎无损</td>
 </tr>
 <tr>
-<td><strong>视频（最快）</strong></td>
-<td>LTX-Video 2B 蒸馏</td>
-<td>fp8 4.46 GB</td>
-<td><strong>19.2 s</strong>（1216×704/121帧）</td>
-<td>目前最快的视频模型；运动幅度偏小</td>
+<td><strong>视频（最快·当前在库）</strong></td>
+<td><strong>Wan 2.2 14B MoE 双专家 + 4 步 LoRA</strong></td>
+<td>fp8 双专家 28.6 GB</td>
+<td><strong>93.8 s</strong>（832×480/81帧/<strong>4步</strong>）</td>
+<td>双专家 + 蒸馏 LoRA 是当前速度/质量最优组合；LTX-Video 2B 已淘汰（见下），LTX-2.3 Q4 待验证（Round 7）</td>
+</tr>
+<tr>
+<td><s>视频（最快·已淘汰）</s></td>
+<td><s>LTX-Video 2B 蒸馏</s></td>
+<td><s>fp8 4.46 GB</s></td>
+<td><s>19.2 s</s></td>
+<td><strong>权重已删除（2026-10-05 清理）</strong>：实测完全不跟随中文提示词（§6.4），且被 LTX-2.3 22B 取代——此行仅存档，<strong>勿当作在用配置</strong></td>
 </tr>
 <tr>
 <td><strong>视频（质量最好·轻量档）</strong></td>
@@ -1302,7 +1372,7 @@ Chroma1-HD 与 Chroma1-Radiance 各有自己的模板，混用会报 <code>value
 <strong>这不是噪点，是可用的音视频。</strong></p>
 <h3 id="64-纯视频--三条线各有一条硬理由">6.4 纯视频 —— 三条线，各有一条硬理由</h3>
 <p>纯视频我们跑了<strong>三条线</strong>，结论很干净：<strong>它们不是互相替代关系，而是三种不同的取舍。</strong></p>
-<h4 id="ltx-video-2b-蒸馏--最快">LTX-Video 2B 蒸馏 —— 最快</h4>
+<h4 id="ltx-video-2b-蒸馏---已淘汰权重已删本节为存档记录">LTX-Video 2B 蒸馏 —— ⚠️ <strong>已淘汰（权重已删，本节为存档记录）</strong></h4>
 <div class="tw"><table>
 <thead>
 <tr>
@@ -3201,6 +3271,12 @@ $2000 万美元的营收门槛对个人和小团队不构成实际限制。
 <hr />
 <h2 id="附录-e覆盖度审计--我们试过什么没试什么为什么放弃">附录 E：覆盖度审计 —— 我们试过什么、没试什么、为什么放弃</h2>
 <blockquote>
+<p>⚠️ <strong>读法导引（给自动化对比工具）</strong>：本节是<strong>决策档案</strong>，不是任务清单。
+凡标注「已淘汰 / 权重已删除 / 跑不通」的条目都是<strong>主动决策的结论</strong>（当前有效状态见 §1「当前资产快照」），
+把它们当成&quot;缺口&quot;或&quot;未跟进&quot;是对本文档的误读。<strong>2026-11-02 校准</strong>：真实缺口只有
+LTX-2.3 Q4、Ming-Image、帧插值三项（Round 7 清单）。</p>
+</blockquote>
+<blockquote>
 <p>这一节回答一个很容易被跳过、但最该被追问的问题：<strong>「最先进的模型都试过了吗？」</strong>
 诚实的答案是：<strong>没有全试过。</strong> 三类领域的覆盖度差别很大。下面把账摊开，
 并对<strong>每一个主动放弃的模型写清确切理由</strong> —— 其中包括<strong>一次判断失误的纠正</strong>。</p>
@@ -3610,7 +3686,7 @@ Mediterranean coastline).</p>
 </tr>
 <tr>
 <td>CUDA</td>
-<td>12.8</td>
+<td><strong>13.0</strong> (bundled with the PyTorch cu130 wheels)</td>
 </tr>
 <tr>
 <td>System RAM</td>
@@ -3626,6 +3702,69 @@ Mediterranean coastline).</p>
 </tr>
 </tbody>
 </table></div>
+<h3 id="-live-asset-snapshot-2026-11-02--read-this-before-citing-the-playbook">📌 Live asset snapshot (2026-11-02) — read this before citing the playbook</h3>
+<p><strong>In stock and in use</strong> (<code>D:\models\comfyui-models</code>, 28 primary model files / 441 GB):</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Stock</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Image (T2I)</td>
+<td>Z-Image-Turbo nvfp4/int8/<strong>bf16</strong>; PixelDiT upscale ×2; MOSS-Image SFT int8 (with BBox layout); FLUX.3 Klein distilled int8</td>
+<td>✅ all measured</td>
+</tr>
+<tr>
+<td>Image (editing)</td>
+<td>FLUX.2 Klein 4B/9B fp8; <strong>Fibo 2.0 edit_turbo int8</strong> (added 2026-11-02)</td>
+<td>Fibo pending test</td>
+</tr>
+<tr>
+<td>Image (high-res / Chinese)</td>
+<td>Qwen-Image 2512 fp8 + Qwen-Image 2.1 int8</td>
+<td>✅ measured</td>
+</tr>
+<tr>
+<td>Video (T2V/I2V)</td>
+<td>Wan 2.2 dual-expert fp8 + TI2V 5B fp16 + 4-step LoRA</td>
+<td>✅ measured</td>
+</tr>
+<tr>
+<td>Video (audio+video)</td>
+<td><strong>MiniMax H3</strong> int8 + LightVAE</td>
+<td>✅ measured</td>
+</tr>
+<tr>
+<td>Character motion transfer</td>
+<td>Wan 2.2 Animate-2 int8_convrot (Move/Mix)</td>
+<td>✅ measured</td>
+</tr>
+<tr>
+<td>Music</td>
+<td>ACE-Step 1.5 / YuE2 / MiniMax Music 3</td>
+<td>✅ measured</td>
+</tr>
+<tr>
+<td>3D</td>
+<td>Hunyuan3D 2.1</td>
+<td>✅ measured</td>
+</tr>
+<tr>
+<td>Support</td>
+<td>clip_vision_h, umt5, qwen3vl_4b/8b/32b, SAM2, DWPose, flux2-vae, etc.</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Deliberately eliminated</strong> (weights deleted after measurement — <strong>these are decisions, not gaps</strong>):
+LTX-Video 2B (fails Chinese prompts, §6.4), HV1.5 720p/1080p + SR (§6.1, superseded by PixelDiT),
+FLUX.2 Klein 9B nvfp4 (worse than fp8), diffusers original duplicates, etc. (see §6.6 cleanup record).</p>
+<p><strong>Known unverified</strong> (Round 7 list): LTX-2.3 22B distilled Q4 GGUF, Ming-Image 0.1-Design
+(natively supported in 0.43; 19.5 GB encoder is heavy), frame interpolation node, Fibo 2.0 measurement.</p>
 <p><strong>Why start at 24 GB?</strong> Because it is the only genuinely hard constraint in this document.</p>
 <p>Raw compute on a modern laptop GPU is never the problem — an 8-step distilled model renders a
 1024² image in about ten seconds on a 5090. What decides which models you can and cannot run is
@@ -3691,11 +3830,18 @@ optimization. It is the difference between running and not running.</p>
 <td>BFL's official fp8 file is only 4.07 GB, quality intact</td>
 </tr>
 <tr>
-<td><strong>Video (fastest)</strong></td>
-<td>LTX-Video 2B distilled</td>
-<td>fp8 4.46 GB</td>
-<td><strong>19.2 s</strong> (1216×704/121 frames)</td>
-<td>Fastest video model we measured; motion is subtle</td>
+<td><strong>Video (fastest · current stock)</strong></td>
+<td><strong>Wan 2.2 14B MoE dual-expert + 4-step LoRA</strong></td>
+<td>fp8 dual-expert 28.6 GB</td>
+<td><strong>93.8 s</strong> (832×480/81 frames/<strong>4 steps</strong>)</td>
+<td>dual-expert + distilled LoRA is the best speed/quality combo in stock; LTX-Video 2B eliminated (below), LTX-2.3 Q4 pending (Round 7)</td>
+</tr>
+<tr>
+<td><s>Video (fastest · eliminated)</s></td>
+<td><s>LTX-Video 2B distilled</s></td>
+<td><s>fp8 4.46 GB</s></td>
+<td><s>19.2 s</s></td>
+<td><strong>weights deleted (2026-10-05 cleanup)</strong>: measured as completely ignoring Chinese prompts (§6.4), superseded by LTX-2.3 22B — archive row only, <strong>not an active config</strong></td>
 </tr>
 <tr>
 <td><strong>Video (best quality, light tier)</strong></td>
@@ -4610,7 +4756,7 @@ sunset). <strong>This is not noise. It is usable video with usable audio.</stron
 <h3 id="64-video-only--three-lines-each-with-one-hard-reason">6.4 Video only — three lines, each with one hard reason</h3>
 <p>We ran <strong>three</strong> video-only lines, and the conclusion is clean: <strong>they do not replace each other,
 they are three different trade-offs.</strong></p>
-<h4 id="ltx-video-2b-distilled--the-fastest">LTX-Video 2B distilled — the fastest</h4>
+<h4 id="ltx-video-2b-distilled---eliminated-weights-deleted-this-section-is-an-archive">LTX-Video 2B distilled — ⚠️ <strong>eliminated (weights deleted; this section is an archive)</strong></h4>
 <div class="tw"><table>
 <thead>
 <tr>
@@ -6575,6 +6721,13 @@ Conversely, splitting pays off only when each model genuinely needs its own tool
 <p>Until then, the <strong>benefits of the single repo — reusable, comparable, explained in one pass — far outweigh the cost.</strong></p>
 <hr />
 <h2 id="appendix-e-coverage-audit--what-we-ran-what-we-did-not-and-why">Appendix E: Coverage audit — what we ran, what we did not, and why</h2>
+<blockquote>
+<p>⚠️ <strong>How to read this (for automated comparison tools)</strong>: this section is a <strong>decision archive</strong>, not a
+to-do list. Entries marked &quot;eliminated / weights deleted / does not fit&quot; are <strong>conclusions of deliberate
+decisions</strong> (current live state: see the asset snapshot in §1). Treating them as &quot;gaps&quot; or &quot;not kept up&quot;
+is a misreading. <strong>Calibrated 2026-11-02</strong>: the only real gaps are LTX-2.3 Q4, Ming-Image and frame
+interpolation (Round 7 list).</p>
+</blockquote>
 <blockquote>
 <p>This section answers the question that is easiest to skip and most worth asking:
 <strong>&quot;Did you try all the state-of-the-art models?&quot;</strong>
